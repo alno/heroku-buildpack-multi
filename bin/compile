@@ -2,6 +2,28 @@
 
 set -e
 
+# If called with no arguments a new timer is returned.
+# If called with arguments the first is used as a timer
+# value and the elapsed time is returned in the form HH:MM:SS.
+#
+function timer()
+{
+    if [[ $# -eq 0 ]]; then
+        echo $(date '+%s')
+    else
+        local  stime=$1
+        etime=$(date '+%s')
+
+        if [[ -z "$stime" ]]; then stime=$etime; fi
+
+        dt=$((etime - stime))
+        ds=$((dt % 60))
+        dm=$(((dt / 60) % 60))
+        dh=$((dt / 3600))
+        printf '%d:%02d:%02d' $dh $dm $ds
+    fi
+}
+
 function indent() {
   c='s/^/       /'
   case $(uname) in
@@ -11,6 +33,8 @@ function indent() {
 }
 
 unset GIT_DIR
+
+start_time=$(timer)
 
 for BUILDPACK in $(cat $1/.buildpacks); do
   dir=$(mktemp -t buildpackXXXXX)
@@ -26,6 +50,7 @@ for BUILDPACK in $(cat $1/.buildpacks); do
   if [ "$url" != "" ]; then
     echo "=====> Downloading Buildpack: $url"
 
+    download_start_time=$(timer)
     if [[ "$url" =~ \.tgz$ ]] || [[ "$url" =~ \.tgz\? ]]; then
       mkdir -p "$dir"
       curl -s "$url" | tar xvz -C "$dir" >/dev/null 2>&1
@@ -38,6 +63,8 @@ for BUILDPACK in $(cat $1/.buildpacks); do
       git checkout $branch >/dev/null 2>&1
     fi
 
+    printf '=====> Downloading buildpack completed in %s\n' $(timer $download_start_time)
+
     # we'll get errors later if these are needed and don't exist
     chmod -f +x $dir/bin/{detect,compile,release} || true
 
@@ -45,6 +72,8 @@ for BUILDPACK in $(cat $1/.buildpacks); do
 
     if [ $? == 0 ]; then
       echo "=====> Detected Framework: $framework"
+      compile_start_time=$(timer)
+
       $dir/bin/compile $1 $2 $3
 
       if [ $? != 0 ]; then
@@ -59,6 +88,8 @@ for BUILDPACK in $(cat $1/.buildpacks); do
       if [ -x $dir/bin/release ]; then
         $dir/bin/release $1 > $1/last_pack_release.out
       fi
+
+      printf '=====> Compiling buildpack completed in %s\n' $(timer $compile_start_time)
     else
       echo "Couldn't detect any framework for this buildpack. Exiting."
       exit 1
@@ -69,3 +100,6 @@ done
 if [ -e $1/last_pack_release.out ]; then
   echo "Using release configuration from last framework ($framework)."
 fi
+
+
+printf '==> Compile completed in %s\n' $(timer $start_time)
