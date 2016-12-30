@@ -51,7 +51,7 @@ for BUILDPACK in $(cat $1/.buildpacks); do
     echo "=====> Downloading Buildpack: $url"
 
     download_start_time=$(timer)
-    if [[ "$url" =~ \.tgz$ ]] || [[ "$url" =~ \.tgz\? ]]; then
+    if [[ "$url" =~ \.tar\.gz$ ]] || [[ "$url" =~ \.tgz$ ]] || [[ "$url" =~ \.tgz\? ]]; then
       mkdir -p "$dir"
       curl -s "$url" | tar xvz -C "$dir" >/dev/null 2>&1
     else
