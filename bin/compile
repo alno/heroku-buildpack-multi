@@ -54,8 +54,12 @@ for BUILDPACK in $(cat $1/.buildpacks); do
     if [[ "$url" =~ \.tar\.gz$ ]] || [[ "$url" =~ \.tgz$ ]] || [[ "$url" =~ \.tgz\? ]]; then
       mkdir -p "$dir"
       curl -s "$url" | tar xvz -C "$dir" >/dev/null 2>&1
-    else
+    elif [[ "$branch" =~ ^[0-9a-fA-F]+$ ]]; then # May be commit hash, use basic clone
       git clone $url $dir >/dev/null 2>&1
+    elif [ "$branch" != "" ]; then # Is branch or tag name, use shallow clone of specific branch/tag
+      git clone $url -b $branch --depth 1 $dir >/dev/null 2>&1
+    else # Shallow clone of HEAD
+      git clone $url --depth 1 $dir >/dev/null 2>&1
     fi
     cd $dir
 
